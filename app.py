@@ -1,30 +1,43 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from surveys import satisfaction_survey
+from flask_debugtoolbar import DebugToolbarExtension
 import pdb 
+# import ipdb
 
 app = Flask(__name__)
+app.debug = True
 app.config['SECRET_KEY'] = 'your_secret_key'
+toolbar = DebugToolbarExtension(app)
 
-responses = []
 
+# responses = []
 
-@app.route('/')
+# responses = {}
+
+@app.route('/', methods=['GET', 'POST'])
 def start():
-    responses.clear()
+    session['responses'] = []
     return render_template('start.html', survey_title='Customer Satisfaction Survey',
                            survey_instructions='Please answer the following questions to help us improve.')
 
 
 @app.route('/questions/<int:question_id>', methods=['GET', 'POST'])
 def show_question(question_id):
+    # if question_id == 0:
+    #     session['responses'] = []
+        
+    responses = session['responses']
+
+       
     if question_id > len(satisfaction_survey.questions):
         flash('Invalid question access.', 'error')
         return redirect(url_for('show_question', question_id=len(responses)))
 
-    if question_id != len(responses):
+    if len(responses) > 0 and question_id != len(responses) - 1:
+        # pdb.set_trace()
         flash('Please answer questions in order.', 'error')
         return redirect(url_for('show_question', question_id=len(responses)))
-    
+        
     # if request.method == 'POST':
     #     answer = request.form.get('answer')
     #     if answer == '':
@@ -38,11 +51,14 @@ def show_question(question_id):
 
     #     return redirect(url_for('show_question', question_id=len(responses)))
 
+    # pdb.set_trace()
     question = satisfaction_survey.questions[question_id]
     return render_template('question.html', question=question, question_id=question_id)
 
 @app.route('/answer', methods=['POST'])
 def handle_answer():
+    # breakpoint()
+    responses = session['responses']
     answer = request.form.get('answer')
     # pdb.set_trace()
     if  not answer:
@@ -58,6 +74,7 @@ def handle_answer():
 
 @app.route('/thank-you')
 def thank_you():
+    responses = session['responses']
     flash('Thank you for taking our survey!', 'success')
     return render_template('thankyou.html',responses=responses)
 
