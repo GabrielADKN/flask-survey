@@ -8,17 +8,19 @@ app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = 'your_secret_key'
 toolbar = DebugToolbarExtension(app)
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 
-# responses = []
+responses = []
 
 # responses = {}
 
 @app.route('/', methods=['GET', 'POST'])
 def start():
     session['responses'] = []
-    return render_template('start.html', survey_title='Customer Satisfaction Survey',
-                           survey_instructions='Please answer the following questions to help us improve.')
+    # session['responses'] = []
+    return render_template('start.html', survey_title=satisfaction_survey.title,
+                           survey_instructions=satisfaction_survey.instructions)
 
 
 @app.route('/questions/<int:question_id>', methods=['GET', 'POST'])
@@ -26,14 +28,17 @@ def show_question(question_id):
     # if question_id == 0:
     #     session['responses'] = []
         
-    responses = session['responses']
+    responses = session.get('responses')
+    
+    print("Current question_id:", question_id)
+    print("Current responses:", session["responses"])
 
        
     if question_id > len(satisfaction_survey.questions):
         flash('Invalid question access.', 'error')
         return redirect(url_for('show_question', question_id=len(responses)))
 
-    if len(responses) > 0 and question_id != len(responses) - 1:
+    if question_id != len(session['responses']):
         # pdb.set_trace()
         flash('Please answer questions in order.', 'error')
         return redirect(url_for('show_question', question_id=len(responses)))
@@ -58,23 +63,25 @@ def show_question(question_id):
 @app.route('/answer', methods=['POST'])
 def handle_answer():
     # breakpoint()
-    responses = session['responses']
+    # responses = session.get('responses', [])
     answer = request.form.get('answer')
     # pdb.set_trace()
     if  not answer:
         flash('Please select an answer before moving on.', 'error')
         return redirect(url_for('show_question', question_id=len(responses)))
     
+    responses = session['responses']
     responses.append(answer)
+    session['responses'] = responses
 
-    if len(responses) == len(satisfaction_survey.questions):
+    if len(session['responses']) == len(satisfaction_survey.questions):
         return redirect(url_for('thank_you'))
 
     return redirect(url_for('show_question', question_id=len(responses)))
 
 @app.route('/thank-you')
 def thank_you():
-    responses = session['responses']
+    responses = session.get('responses', [])
     flash('Thank you for taking our survey!', 'success')
     return render_template('thankyou.html',responses=responses)
 
